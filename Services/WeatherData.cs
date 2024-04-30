@@ -1,5 +1,4 @@
-﻿
-namespace WeatherApp.Services
+﻿namespace WeatherApp.Services
 {
     public class WeatherData
     {

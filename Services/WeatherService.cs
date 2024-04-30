@@ -1,44 +1,66 @@
 ﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Net.Http;
-using System.Threading.Tasks;
 
 namespace WeatherApp.Services
 {
     public class WeatherService
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _apiKey = "e158fb25373f5ac6ef2df071c00ff75c"; // Ваш API ключ от openweathermap
+        HttpClient _httpClient;
 
-        public WeatherService(HttpClient httpClient)
+        private readonly IConfiguration _configuration;
+
+        private readonly ILogger<WeatherService> _logger;
+
+        public WeatherService(HttpClient httpClient, IConfiguration configuration, ILogger<WeatherService> logger)
         {
             _httpClient = httpClient;
+            _configuration = configuration;
+            _logger = logger;
+        }
+
+        public ILogger<WeatherService> GetLogger()
+        {
+            return _logger;
         }
 
         public async Task<WeatherData> GetWeatherAsync(string city)
         {
-            string apiUrl = $"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={_apiKey}&units=metric";
-
-            HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
-
-            if (response.IsSuccessStatusCode)
+            try
             {
-                string weatherJson = await response.Content.ReadAsStringAsync();
-                WeatherData weatherData = ParseWeatherJson(weatherJson);
-                return weatherData;
+                // Ваш код получения погоды
+                _logger.LogInformation("Запрошена погода для города {City}", city);
+
+
+                var apiKey = _configuration["WeatherApi:ApiKey"];
+
+                var apiUrl = $"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={apiKey}&units=metric";
+
+                var response = await _httpClient.GetAsync(apiUrl);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var weatherJson = await response.Content.ReadAsStringAsync();
+                    var weatherData = ParseWeatherJson(weatherJson);
+                    return weatherData;
+                }
+                else
+                {
+                    // Обработка ошибок, если запрос не успешен
+                    return null;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                // Обработка ошибок, если запрос не успешен
-                return null;
+                _logger.LogError(ex, "Ошибка при выполнении метода GetWeatherAsync");
+                throw; // Перебрасываем исключение выше для обработки в другом месте
             }
+
         }
 
         public WeatherData ParseWeatherJson(string weatherJson)
         {
-            JObject json = JObject.Parse(weatherJson);
+            var json = JObject.Parse(weatherJson);
 
-            WeatherData weatherData = new WeatherData
+            var weatherData = new WeatherData
             {
                 City = (string)json["name"],
                 Temperature = (double)json["main"]["temp"],
