@@ -2,10 +2,10 @@
 using WeatherApp.Services;
 
 namespace WeatherApp.Controllers
-{    
+{
     [ApiController]
     [Route("[controller]")]
-    public class WeatherController : ControllerBase
+    public partial class WeatherController : ControllerBase
     {
         private readonly WeatherService _weatherService;
 
@@ -43,25 +43,22 @@ namespace WeatherApp.Controllers
             }
             else
             {
-                // Если что-то пошло не так, можно залогировать ошибку
                 _weatherService.GetLogger().LogError("Ошибка при получении погоды для города {City}", city);
                 //return NotFound($"Weather data for city '{city}' not found");
             }
             return new WeatherData();
         }
 
-        public class WeatherComparisonResult
-        {
-            public List<WeatherData>? WeatherDataList { get; set; }
-            public double AverageTemperature { get; set; }
-        }
-
         [HttpGet("compare")]
         public async Task<IActionResult> CompareWeather(string city1, string city2)
         {
+            var message = string.Empty;
+
             if (string.IsNullOrWhiteSpace(city1) || string.IsNullOrWhiteSpace(city2))
             {
-                return BadRequest("Both city parameters are required");
+                message = "Ошибка в сравнении городов";
+                _weatherService.GetLogger().LogInformation(message);
+                return BadRequest(message);
             }
 
             var weatherData1 = await _weatherService.GetWeatherAsync(city1);
@@ -69,8 +66,9 @@ namespace WeatherApp.Controllers
 
             if (weatherData1 == null || weatherData2 == null)
             {
+                message = "Оба города не найдены";
                 _weatherService.GetLogger().LogInformation(message);
-                return NotFound("Weather data not found for one or both cities");
+                return NotFound(message);
             }
 
             var averageTemperature = (weatherData1.Temperature + weatherData2.Temperature) / 2;
@@ -81,6 +79,8 @@ namespace WeatherApp.Controllers
                 AverageTemperature = averageTemperature
             };
 
+            message = $"Успешно сравнены 2 города {city1} и {city2}";
+            _weatherService.GetLogger().LogInformation(message);
             return Ok(result);
         }
 
